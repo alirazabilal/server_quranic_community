@@ -11,6 +11,7 @@ const assignmentRoutes    = require('./routes/assignment');
 const submissionRoutes    = require('./routes/submission');
 const notificationRoutes  = require('./routes/notifications');
 const { errorHandler }    = require('./middleware/errorHandler');
+const { initOnStartup }   = require('./utils/notifications');
 
 const app = express();
 
@@ -82,6 +83,7 @@ mongoose
   .connect(MONGODB_URI)
   .then(() => {
     console.log('✅ MongoDB connected');
+    initOnStartup(); // logs Firebase Admin status immediately on every deploy
     app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
   })
   .catch((err) => {

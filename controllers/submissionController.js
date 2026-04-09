@@ -179,6 +179,7 @@ async function setTeacherScore(req, res, next) {
     // FCM: notify student
     const student = await User.findById(submission.studentId).select('+fcmToken');
     const assignment = await Assignment.findById(submission.assignmentId).select('title');
+    console.log('[FCM-score] studentId:', submission.studentId, '| fcmToken:', student?.fcmToken ? student.fcmToken.slice(0,20)+'...' : 'NULL ⚠️');
     if (student?.fcmToken) {
       await sendPush(
         student.fcmToken,
@@ -210,6 +211,7 @@ async function sendBack(req, res, next) {
     // FCM: notify student
     const student = await User.findById(submission.studentId).select('+fcmToken');
     const assignment = await Assignment.findById(submission.assignmentId).select('title');
+    console.log('[FCM-sendback] studentId:', submission.studentId, '| fcmToken:', student?.fcmToken ? student.fcmToken.slice(0,20)+'...' : 'NULL ⚠️');
     if (student?.fcmToken) {
       await sendPush(
         student.fcmToken,
