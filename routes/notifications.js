@@ -18,6 +18,7 @@ router.post('/token', protect, tokenValidation, async (req, res, next) => {
     }
     const { fcmToken } = req.body;
     await User.findByIdAndUpdate(req.user._id, { fcmToken });
+    console.log('[FCM-token] Saved token for user:', req.user._id, '| token prefix:', fcmToken.slice(0, 20) + '...');
     res.json({ success: true, message: 'Device token saved.' });
   } catch (err) {
     next(err);
