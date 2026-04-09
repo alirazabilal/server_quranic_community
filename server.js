@@ -14,6 +14,9 @@ const { errorHandler }    = require('./middleware/errorHandler');
 
 const app = express();
 
+// ── Trust Render/Heroku/etc. proxy (required for rate-limit + IP detection) ──
+app.set('trust proxy', 1);
+
 // ── Security headers (Helmet) ─────────────────────────────────────────────
 app.use(helmet());
 
