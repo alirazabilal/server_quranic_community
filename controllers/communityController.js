@@ -75,7 +75,7 @@ async function getCommunityStudents(req, res, next) {
           $or: [{ assignedTo: { $size: 0 } }, { assignedTo: student._id }],
         });
         const assignmentIds = assignments.map((a) => a._id);
-        const submissions = await Submission.find({ studentId: student._id, assignmentId: { $in: assignmentIds } });
+        const submissions = await Submission.find({ studentId: student._id, assignmentId: { $in: assignmentIds }, isLatest: true });
         const submissionMap = Object.fromEntries(submissions.map((s) => [s.assignmentId.toString(), s]));
 
         const now = new Date();
@@ -126,7 +126,7 @@ async function getStudentProgress(req, res, next) {
       $or: [{ assignedTo: { $size: 0 } }, { assignedTo: studentId }],
     }).sort({ dueDate: 1 });
 
-    const submissions = await Submission.find({ studentId, communityId });
+    const submissions = await Submission.find({ studentId, communityId, isLatest: true });
     const submissionMap = Object.fromEntries(submissions.map((s) => [s.assignmentId.toString(), s]));
 
     const now = new Date();
@@ -136,11 +136,16 @@ async function getStudentProgress(req, res, next) {
       if (status === 'pending' && new Date(a.dueDate) < now) status = 'overdue';
       return {
         ...a.toJSON(),
+        submissionId: sub?._id ?? null,
         submissionStatus: status,
         recitationScore: sub?.recitationScore ?? null,
         mistakeCount: sub?.mistakeCount ?? null,
         submittedAt: sub?.submittedAt ?? null,
         completedAt: sub?.completedAt ?? null,
+        teacherScore: sub?.teacherScore ?? null,
+        teacherFeedback: sub?.teacherFeedback ?? null,
+        retakeCount: sub?.retakeCount ?? 0,
+        needsRedoReason: sub?.needsRedoReason ?? null,
       };
     });
 
@@ -200,7 +205,7 @@ async function getJoinedCommunities(req, res, next) {
             $or: [{ assignedTo: { $size: 0 } }, { assignedTo: req.user._id }],
           });
           const assignmentIds = assignments.map((a) => a._id);
-          const submissions = await Submission.find({ studentId: req.user._id, assignmentId: { $in: assignmentIds } });
+          const submissions = await Submission.find({ studentId: req.user._id, assignmentId: { $in: assignmentIds }, isLatest: true });
           const submissionMap = Object.fromEntries(submissions.map((s) => [s.assignmentId.toString(), s]));
 
           let pendingCount = 0, overdueCount = 0;

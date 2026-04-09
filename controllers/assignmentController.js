@@ -133,6 +133,7 @@ async function getMyAssignments(req, res, next) {
     const submissions = await Submission.find({
       studentId: req.user._id,
       assignmentId: { $in: assignments.map((a) => a._id) },
+      isLatest: true,
     });
     const submissionMap = Object.fromEntries(submissions.map((s) => [s.assignmentId.toString(), s]));
 
@@ -143,11 +144,16 @@ async function getMyAssignments(req, res, next) {
       if (status === 'pending' && new Date(a.dueDate) < now) status = 'overdue';
       return {
         ...a.toJSON(),
+        submissionId: sub?._id ?? null,
         submissionStatus: status,
         recitationScore: sub?.recitationScore ?? null,
         mistakeCount: sub?.mistakeCount ?? null,
         completedAt: sub?.completedAt ?? null,
         submittedAt: sub?.submittedAt ?? null,
+        teacherScore: sub?.teacherScore ?? null,
+        teacherFeedback: sub?.teacherFeedback ?? null,
+        retakeCount: sub?.retakeCount ?? 0,
+        needsRedoReason: sub?.needsRedoReason ?? null,
       };
     });
 
