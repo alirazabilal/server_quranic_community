@@ -43,10 +43,6 @@ function _init() {
 
 /** Call this at server startup to log FCM status immediately. */
 function initOnStartup() { _init(); }
-    console.error('[FCM] Init failed:', e.message);
-    _messaging = false;
-  }
-}
 
 /**
  * Send a single push notification.
