@@ -2,6 +2,8 @@ const Submission  = require('../models/Submission');
 const Assignment  = require('../models/Assignment');
 const Community   = require('../models/Community');
 const Membership  = require('../models/Membership');
+const User        = require('../models/User');
+const { sendPush } = require('../utils/notifications');
 const { body, param, validationResult } = require('express-validator');
 
 function validate(req, res, next) {
@@ -173,6 +175,19 @@ async function setTeacherScore(req, res, next) {
     submission.teacherScore = parseInt(teacherScore);
     submission.teacherFeedback = teacherFeedback?.trim() || null;
     await submission.save();
+
+    // FCM: notify student
+    const student = await User.findById(submission.studentId).select('+fcmToken');
+    const assignment = await Assignment.findById(submission.assignmentId).select('title');
+    if (student?.fcmToken) {
+      await sendPush(
+        student.fcmToken,
+        'Assignment Scored',
+        `Your teacher scored "${assignment?.title ?? 'your assignment'}": ${submission.teacherScore}/10`,
+        { type: 'scored', submissionId: submission._id.toString() }
+      );
+    }
+
     res.json({ success: true, message: 'Score saved.', data: { submission } });
   } catch (err) {
     next(err);
@@ -191,6 +206,19 @@ async function sendBack(req, res, next) {
     submission.status = 'needs_redo';
     submission.needsRedoReason = reason?.trim() || null;
     await submission.save();
+
+    // FCM: notify student
+    const student = await User.findById(submission.studentId).select('+fcmToken');
+    const assignment = await Assignment.findById(submission.assignmentId).select('title');
+    if (student?.fcmToken) {
+      await sendPush(
+        student.fcmToken,
+        'Please Redo Assignment',
+        `Your teacher sent "${assignment?.title ?? 'an assignment'}" back for redo.${reason ? ' Reason: ' + reason.substring(0, 80) : ''}`,
+        { type: 'needs_redo', submissionId: submission._id.toString() }
+      );
+    }
+
     res.json({ success: true, message: 'Assignment sent back for redo.', data: { submission } });
   } catch (err) {
     next(err);
@@ -221,9 +249,27 @@ async function getMySubmissions(req, res, next) {
   }
 }
 
+// ── TEACHER: All submitted work across the community (inbox) ──────────────
+async function getSubmissionsInbox(req, res, next) {
+  try {
+    const { communityId } = req.params;
+    const community = await Community.findOne({ _id: communityId, teacherId: req.user._id });
+    if (!community) return res.status(404).json({ success: false, message: 'Community not found.' });
+
+    const submissions = await Submission.find({ communityId, status: 'submitted' })
+      .populate('studentId', 'name email avatarInitials')
+      .populate('assignmentId', 'title surahNumber ayahStart ayahEnd type')
+      .sort({ submittedAt: -1 });
+
+    res.json({ success: true, data: { submissions } });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   completeAssignment, submitToTeacher, retake,
-  setTeacherScore, sendBack, getSubmissionHistory, getMySubmissions,
+  setTeacherScore, sendBack, getSubmissionHistory, getMySubmissions, getSubmissionsInbox,
   completeValidation, submitValidation, teacherScoreValidation, sendBackValidation, retakeValidation,
   validate,
 };

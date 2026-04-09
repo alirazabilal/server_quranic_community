@@ -228,8 +228,42 @@ async function getJoinedCommunities(req, res, next) {
   }
 }
 
+// ── TEACHER: Remove a student from community ──────────────────────────────
+async function removeStudent(req, res, next) {
+  try {
+    const { communityId, studentId } = req.params;
+    const community = await Community.findOne({ _id: communityId, teacherId: req.user._id });
+    if (!community) return res.status(404).json({ success: false, message: 'Community not found.' });
+
+    const membership = await Membership.findOne({ communityId, studentId, status: 'active' });
+    if (!membership) return res.status(404).json({ success: false, message: 'Student is not in this community.' });
+
+    membership.status = 'removed';
+    await membership.save();
+    res.json({ success: true, message: 'Student removed from community.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── STUDENT: Leave a community ────────────────────────────────────────────
+async function leaveCommunity(req, res, next) {
+  try {
+    const { communityId } = req.params;
+    const membership = await Membership.findOne({ communityId, studentId: req.user._id, status: 'active' });
+    if (!membership) return res.status(404).json({ success: false, message: 'You are not a member of this community.' });
+
+    membership.status = 'removed';
+    await membership.save();
+    res.json({ success: true, message: 'You have left the community.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createCommunity, getMyCommunities, getCommunityStudents, getStudentProgress,
   joinCommunity, getJoinedCommunities,
+  removeStudent, leaveCommunity,
   createValidation, validate,
 };

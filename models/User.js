@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema(
       enum: ['teacher', 'student'],
       required: [true, 'Role is required'],
     },
+    fcmToken: {
+      type: String,
+      default: null,
+      select: false, // only fetched explicitly
+    },
   },
   { timestamps: true }
 );

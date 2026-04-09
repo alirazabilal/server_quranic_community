@@ -3,14 +3,19 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
-const authRoutes       = require('./routes/auth');
-const communityRoutes  = require('./routes/community');
-const assignmentRoutes = require('./routes/assignment');
-const submissionRoutes = require('./routes/submission');
-const { errorHandler } = require('./middleware/errorHandler');
+const authRoutes          = require('./routes/auth');
+const communityRoutes     = require('./routes/community');
+const assignmentRoutes    = require('./routes/assignment');
+const submissionRoutes    = require('./routes/submission');
+const notificationRoutes  = require('./routes/notifications');
+const { errorHandler }    = require('./middleware/errorHandler');
 
 const app = express();
+
+// ── Security headers (Helmet) ─────────────────────────────────────────────
+app.use(helmet());
 
 // ── CORS ──────────────────────────────────────────────────────────────────
 const allowedOrigins = [
@@ -34,10 +39,10 @@ app.use(cors({
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
-// ── Global rate limiting (light) ──────────────────────────────────────────
+// ── Global rate limiting ─────────────────────────────────────────────────
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300,
+  max: 150,                 // tighter: 150 req / 15 min per IP
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
@@ -47,10 +52,11 @@ app.use(rateLimit({
 app.get('/health', (_req, res) => res.json({ success: true, status: 'ok' }));
 
 // ── Routes ────────────────────────────────────────────────────────────────
-app.use('/api/auth',        authRoutes);
-app.use('/api/community',   communityRoutes);
-app.use('/api/assignment',  assignmentRoutes);
-app.use('/api/submission',  submissionRoutes);
+app.use('/api/auth',           authRoutes);
+app.use('/api/community',      communityRoutes);
+app.use('/api/assignment',     assignmentRoutes);
+app.use('/api/submission',     submissionRoutes);
+app.use('/api/notifications',  notificationRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────
 app.use((_req, res) => {

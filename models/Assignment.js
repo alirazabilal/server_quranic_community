@@ -54,6 +54,18 @@ const assignmentSchema = new mongoose.Schema(
       type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
       default: [],
     },
+    // Unlock gates: student must score >= unlockThreshold on prerequisite to unlock this assignment
+    prerequisiteAssignmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Assignment',
+      default: null,
+    },
+    unlockThreshold: {
+      type: Number,
+      min: [1, 'Unlock threshold must be 1–10'],
+      max: [10, 'Unlock threshold must be 1–10'],
+      default: null,
+    },
   },
   { timestamps: true }
 );
