@@ -10,6 +10,8 @@ const communityRoutes     = require('./routes/community');
 const assignmentRoutes    = require('./routes/assignment');
 const submissionRoutes    = require('./routes/submission');
 const notificationRoutes  = require('./routes/notifications');
+const programRoutes       = require('./routes/program');
+const certificateRoutes   = require('./routes/certificate');
 const { errorHandler }    = require('./middleware/errorHandler');
 const { initOnStartup }   = require('./utils/notifications');
 
@@ -61,6 +63,8 @@ app.use('/api/community',      communityRoutes);
 app.use('/api/assignment',     assignmentRoutes);
 app.use('/api/submission',     submissionRoutes);
 app.use('/api/notifications',  notificationRoutes);
+app.use('/api/program',        programRoutes);
+app.use('/api/certificate',    certificateRoutes);
 
 // ── 404 handler ───────────────────────────────────────────────────────────
 app.use((_req, res) => {

@@ -269,9 +269,72 @@ async function getSubmissionsInbox(req, res, next) {
   }
 }
 
+// ── Student: Progress report data ─────────────────────────────────────────
+// GET /api/submission/report/:communityId?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
+async function getReportData(req, res, next) {
+  try {
+    const { communityId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const start = startDate ? new Date(startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end   = endDate   ? new Date(endDate)   : new Date();
+    // Ensure end covers the whole day
+    end.setHours(23, 59, 59, 999);
+
+    const community = await Community.findById(communityId);
+    if (!community) return res.status(404).json({ success: false, message: 'Community not found.' });
+
+    const teacher = await User.findById(community.teacherId).select('name');
+
+    // Completed or submitted submissions in the date window
+    const submissions = await Submission.find({
+      communityId,
+      studentId: req.user._id,
+      status:    { $in: ['completed', 'submitted'] },
+      $or: [
+        { completedAt: { $gte: start, $lte: end } },
+        { submittedAt: { $gte: start, $lte: end } },
+      ],
+    })
+      .populate('assignmentId', 'title surahNumber ayahStart ayahEnd type dueDate')
+      .sort({ completedAt: -1 });
+
+    const student = await User.findById(req.user._id).select('name');
+
+    res.json({
+      success: true,
+      report: {
+        studentName:    student   ? student.name   : '',
+        communityName:  community.name,
+        teacherName:    teacher   ? teacher.name   : '',
+        startDate:      start.toISOString(),
+        endDate:        end.toISOString(),
+        submissions:    submissions.map(s => ({
+          id:              s._id,
+          assignmentTitle: s.assignmentId ? s.assignmentId.title        : '',
+          surahNumber:     s.assignmentId ? s.assignmentId.surahNumber  : 0,
+          ayahStart:       s.assignmentId ? s.assignmentId.ayahStart    : 0,
+          ayahEnd:         s.assignmentId ? s.assignmentId.ayahEnd      : 0,
+          type:            s.assignmentId ? s.assignmentId.type         : '',
+          completedAt:     s.completedAt,
+          submittedAt:     s.submittedAt,
+          recitationScore: s.recitationScore,
+          mistakeCount:    s.mistakeCount,
+          teacherScore:    s.teacherScore,
+          teacherFeedback: s.teacherFeedback,
+          status:          s.status,
+        })),
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   completeAssignment, submitToTeacher, retake,
   setTeacherScore, sendBack, getSubmissionHistory, getMySubmissions, getSubmissionsInbox,
+  getReportData,
   completeValidation, submitValidation, teacherScoreValidation, sendBackValidation, retakeValidation,
   validate,
 };

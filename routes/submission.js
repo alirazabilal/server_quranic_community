@@ -3,6 +3,7 @@ const { protect, restrictTo } = require('../middleware/authMiddleware');
 const {
   completeAssignment, submitToTeacher, retake,
   setTeacherScore, sendBack, getSubmissionHistory, getMySubmissions, getSubmissionsInbox,
+  getReportData,
   completeValidation, submitValidation, teacherScoreValidation,
   sendBackValidation, retakeValidation, validate,
 } = require('../controllers/submissionController');
@@ -12,6 +13,7 @@ router.post('/complete',           protect, restrictTo('student'), completeValid
 router.post('/submit',             protect, restrictTo('student'), submitValidation, validate, submitToTeacher);
 router.post('/retake',             protect, restrictTo('student'), retakeValidation, validate, retake);
 router.get('/mine/:communityId',   protect, restrictTo('student'), getMySubmissions);
+router.get('/report/:communityId', protect, restrictTo('student'), getReportData);
 
 // Teacher routes
 router.patch('/:id/teacher-score', protect, restrictTo('teacher'), teacherScoreValidation, validate, setTeacherScore);
