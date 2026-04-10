@@ -234,15 +234,21 @@ async function getStudentPrograms(req, res, next) {
   }
 }
 
-// ── Student: Update item progress ─────────────────────────────────────────
-async function updateStudentItemProgress(req, res, next) {
+// ── Student: Record completion of a curriculum item after a real session ──
+// Called automatically by the app after SessionValidator confirms the student
+// actually recited/memorized the required ayahs. Replaces manual status picker.
+async function completeProgramItem(req, res, next) {
   try {
     const { enrollmentId } = req.params;
-    const { itemIndex, status } = req.body;
+    const { itemIndex, score, mistakeCount } = req.body;
     const idx = Number(itemIndex);
 
     const enrollment = await ProgramEnrollment.findOne({ _id: enrollmentId, studentId: req.user._id });
     if (!enrollment) return res.status(404).json({ success: false, message: 'Enrollment not found or not yours.' });
+
+    if (enrollment.overallStatus === 'certified') {
+      return res.status(400).json({ success: false, message: 'Program already certified.' });
+    }
 
     const program = await Program.findById(enrollment.programId);
     if (!program) return res.status(404).json({ success: false, message: 'Program not found.' });
@@ -253,17 +259,20 @@ async function updateStudentItemProgress(req, res, next) {
 
     const item = enrollment.itemProgress.find(p => p.itemIndex === idx);
     if (item) {
-      item.status      = status;
-      item.completedAt = status === 'completed' ? new Date() : null;
+      item.status      = 'completed';
+      item.completedAt = new Date();
+      if (score        != null) item.score        = score;
+      if (mistakeCount != null) item.mistakeCount = mistakeCount;
     } else {
-      enrollment.itemProgress.push({ itemIndex: idx, status, completedAt: status === 'completed' ? new Date() : null });
+      enrollment.itemProgress.push({
+        itemIndex: idx, status: 'completed', completedAt: new Date(),
+        score: score ?? null, mistakeCount: mistakeCount ?? null,
+      });
     }
 
     const completedCount = enrollment.itemProgress.filter(p => p.status === 'completed').length;
     if (completedCount >= program.curriculumItems.length && enrollment.overallStatus === 'in_progress') {
       enrollment.overallStatus = 'completed';
-    } else if (completedCount < program.curriculumItems.length && enrollment.overallStatus === 'completed') {
-      enrollment.overallStatus = 'in_progress';
     }
     await enrollment.save();
 
@@ -328,6 +337,39 @@ async function verifyCertificate(req, res, next) {
   }
 }
 
+// ── Teacher: Manually enroll a student into an existing program ───────────
+async function enrollStudent(req, res, next) {
+  try {
+    const { programId } = req.params;
+    const { studentId } = req.body;
+
+    const program = await Program.findById(programId);
+    if (!program) return res.status(404).json({ success: false, message: 'Program not found.' });
+
+    const community = await Community.findOne({ _id: program.communityId, teacherId: req.user._id });
+    if (!community) return res.status(403).json({ success: false, message: 'Not your program.' });
+
+    const membership = await Membership.findOne({ communityId: community._id, studentId, isActive: true });
+    if (!membership) return res.status(400).json({ success: false, message: 'Student is not an active member of this community.' });
+
+    const existing = await ProgramEnrollment.findOne({ programId, studentId });
+    if (existing) return res.status(409).json({ success: false, message: 'Student is already enrolled in this program.' });
+
+    const itemProgress = _buildInitialProgress(program.curriculumItems.length);
+    const enrollment = await ProgramEnrollment.create({
+      programId: program._id,
+      studentId,
+      communityId: community._id,
+      itemProgress,
+      overallStatus: 'in_progress',
+    });
+
+    res.status(201).json({ success: true, enrollment: _enrichEnrollment(enrollment, program.curriculumItems.length) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 module.exports = {
   createProgram,
   getCommunityPrograms,
@@ -335,8 +377,9 @@ module.exports = {
   markItemComplete,
   issueCertificate,
   resetEnrollment,
+  enrollStudent,
   getStudentPrograms,
-  updateStudentItemProgress,
+  completeProgramItem,
   getStudentCertificate,
   verifyCertificate,
 };

@@ -7,6 +7,7 @@ const curriculumItemSchema = new mongoose.Schema(
     ayahStart:   { type: Number, required: true, min: 1 },
     ayahEnd:     { type: Number, required: true, min: 1 },
     label:       { type: String, trim: true, maxlength: 100, default: '' },
+    type:        { type: String, enum: ['recitation', 'memorization'], required: true, default: 'recitation' },
   },
   { _id: false }
 );

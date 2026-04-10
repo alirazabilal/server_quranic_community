@@ -9,8 +9,9 @@ const {
   markItemComplete,
   issueCertificate,
   resetEnrollment,
+  enrollStudent,
   getStudentPrograms,
-  updateStudentItemProgress,
+  completeProgramItem,
   getStudentCertificate,
 } = require('../controllers/programController');
 
@@ -32,6 +33,7 @@ router.post(
     body('curriculumItems.*.surahNumber').isInt({ min: 1, max: 114 }).withMessage('Invalid surah number.'),
     body('curriculumItems.*.ayahStart').isInt({ min: 1 }).withMessage('Invalid ayah start.'),
     body('curriculumItems.*.ayahEnd').isInt({ min: 1 }).withMessage('Invalid ayah end.'),
+    body('curriculumItems.*.type').isIn(['recitation', 'memorization']).withMessage('Item type must be recitation or memorization.'),
   ],
   validate,
   createProgram
@@ -77,6 +79,14 @@ router.post(
   resetEnrollment
 );
 
+router.post(
+  '/:programId/enroll',
+  protect, restrictTo('teacher'),
+  [param('programId').isMongoId(), body('studentId').isMongoId().withMessage('Invalid student ID.')],
+  validate,
+  enrollStudent
+);
+
 // ── Student routes ────────────────────────────────────────────────────────
 
 router.get(
@@ -87,16 +97,17 @@ router.get(
   getStudentPrograms
 );
 
-router.patch(
-  '/enrollment/:enrollmentId/item',
+router.post(
+  '/enrollment/:enrollmentId/item/complete',
   protect, restrictTo('student'),
   [
     param('enrollmentId').isMongoId(),
-    body('itemIndex').isInt({ min: 0 }),
-    body('status').isIn(['not_started', 'in_progress', 'completed']),
+    body('itemIndex').isInt({ min: 0 }).withMessage('Item index must be a non-negative integer.'),
+    body('score').optional().isFloat({ min: 0, max: 100 }).withMessage('Score must be 0–100.'),
+    body('mistakeCount').optional().isInt({ min: 0 }).withMessage('Mistake count must be a non-negative integer.'),
   ],
   validate,
-  updateStudentItemProgress
+  completeProgramItem
 );
 
 router.get(

@@ -3,9 +3,11 @@ const mongoose = require('mongoose');
 
 const itemProgressSchema = new mongoose.Schema(
   {
-    itemIndex:   { type: Number, required: true },
-    status:      { type: String, enum: ['not_started', 'in_progress', 'completed'], default: 'not_started' },
-    completedAt: { type: Date, default: null },
+    itemIndex:    { type: Number, required: true },
+    status:       { type: String, enum: ['not_started', 'completed'], default: 'not_started' },
+    completedAt:  { type: Date, default: null },
+    score:        { type: Number, default: null, min: 0, max: 100 }, // recitation accuracy 0–100
+    mistakeCount: { type: Number, default: null, min: 0 },
   },
   { _id: false }
 );

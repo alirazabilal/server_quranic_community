@@ -179,6 +179,22 @@ async function joinCommunity(req, res, next) {
     } else {
       await Membership.create({ communityId: community._id, studentId: req.user._id });
     }
+
+    // Auto-enroll the student into all existing programs of this community
+    const Program           = require('../models/Program');
+    const ProgramEnrollment = require('../models/ProgramEnrollment');
+    const programs = await Program.find({ communityId: community._id });
+    for (const prog of programs) {
+      const alreadyEnrolled = await ProgramEnrollment.exists({ programId: prog._id, studentId: req.user._id });
+      if (!alreadyEnrolled) {
+        const itemProgress = prog.curriculumItems.map((_, i) => ({ itemIndex: i, status: 'not_started', completedAt: null }));
+        await ProgramEnrollment.create({
+          programId: prog._id, studentId: req.user._id,
+          communityId: community._id, itemProgress, overallStatus: 'in_progress',
+        });
+      }
+    }
+
     const teacher = await User.findById(community.teacherId).select('name email avatarInitials');
     res.status(201).json({ success: true, message: 'Joined community successfully.', data: { community, teacher } });
   } catch (err) {
